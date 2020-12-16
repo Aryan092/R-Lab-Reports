@@ -1,0 +1,120 @@
+---
+title: "<center> <h1>ST344 Lab4 - Visualization Techniques</h1> </center>"
+author: "<center>Author - 1826475</center>"
+date: "<center>Date - 02/11/2020</center>"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, tidy=FALSE, message=FALSE, fig.width = 10, fig.height = 5)
+```
+
+### Introduction
+
+This piece will focus on a comparing **Oceania** and **South America** on the basis of life expectancy from 1800 to 2000. To expand on life expectancy, it is described by *Gapminder* as *the average number of years a newborn child would live if current mortality rates were to stay the same*. Life expectancy is the key quantitative variable for evaluating the health of a population for the duration of their lives as opposed  to infant and a child mortality which focus on young age mortality. To summarize it reveals the average age of death for a population.
+
+Evaluating this metric across the timeline,1800-2000, provides a window into the effects that the many developments and major changes had over the years in improving public health. Comparing and contrasting the metric across two continents tells us how these global effects affected the continents possibly due to their  geographies, economiies and cultures.
+
+All the data considered here is form the `life_expectancy_years` dataset, from the *Gapminder data website*^[1]^  which is a an independent non-profit Swedish foundation that works as a fact-bank that aims to use of reliable statistics to give a global picture. To find out more about *Gapminder* and other social variables for countries around the world contained please click [here](https://www.gapminder.org/data/).
+
+```{r ReadData}
+library(rio)
+library(dplyr)
+LifeExp_Data <- import("life_expectancy_years1.xlsx", setclass = "tibble")
+
+```
+
+
+```{r Tidy}
+library(tidyr)
+Tidy_Data <- pivot_longer(LifeExp_Data, !country, names_to= 'year', values_to = 'life_expectancy')
+```
+
+
+```{r Subset}
+Tidy_Data <- Tidy_Data %>% 
+  mutate(country = factor(country), year = as.numeric(year)) %>% 
+  arrange(country) %>% na.omit %>% 
+    filter((year > as.numeric(1799)) & (year < as.numeric(2001)))
+```
+
+
+```{r Continent}
+# Read in data and select relevant subset
+Countries <- import("Countries.xlsx", setclass = "tibble")
+Countries <- filter(Countries, country %in% LifeExp_Data$country)
+# Join the data frames and implement categorical data as factors
+Tidy_Data <- left_join(Tidy_Data, Countries, by = "country")
+Tidy_Data <- mutate(Tidy_Data, country = factor(country), 
+                    continent = factor(continent))
+```
+
+
+### The data
+
+The data contains information for 10 and 12 countries from **Oceania** and **South America** respectively for the years of interest. *(Note: Other countries from these continents were excluedeed due to missing values)*
+
+```{r ContTable}
+library(rio)
+library(dplyr)
+Cont_Data <- import("Book1.xlsx", setclass = "tibble")
+
+library(knitr)
+Country_Matrix <- matrix(c(Cont_Data$Countries,"", "","",""),5,6)
+kable(t(Country_Matrix), table.attr = "style='width:80%;'",  format='html',
+      caption="Countries represented in the data set")
+```
+
+
+### Exploring Life Expectancy Graphically
+
+#### Oceania vs. South America Life Expectancy over Time plot
+
+
+Evaluating data over a timeline, 1800-2000, means a line plot is an effective and common way to represent this. It allows us to display and overlay life expectancy values for countries by superimposing line plots to form something known as a "Spaghetti plot".
+
+```{r GraphVS}
+library(ggplot2)
+
+Sub_Data <- filter(Tidy_Data, continent %in% c("Oceania", "South America"))
+ggplot(Sub_Data, aes(x = year, y = life_expectancy, group = country)) + 
+  geom_line() +  labs(title = "Graphical Representation of Life-Expectancy against Years (1800-2000)", x = "Year", y = "Life Expectancy", caption = "Data source: www.gapminder.org") + theme(plot.title = element_text(hjust = 0.5))+ 
+  geom_smooth(se = FALSE, colour = "green", method = "loess", group = 1) +
+  annotate("rect", xmin = 1890, xmax = 1930, ymin = 0, ymax = 80, alpha = .1, fill="blue") +
+  facet_wrap( ~ continent)
+```
+
+The graph above is a line plot representation of the **life expectancy** data from the *Gapminder data website*^[1]^. It represents countries within each continent using the same colored line, black, as our focus is on the general trend, green, for each continent.
+
+This form presentation juxtaposes the "Spaghetti" plots for each of the 2 continents to provide a good visual aid in comparing the two trends within each continent. We, therefore, notice the general trend for life expectancy over time for both continents follows a similar shape. The general trends show that life expectancy was decreasing gradually at a very slow rate form the 1800 up to 1850. After 1850, life expectancy began to rise at a similar slow rate. Following which comes a period between the late 1800's and early 1900's which is highlighted by the shaded rectangle in the graphs for both continents which represents an interesting period. The gradients of the general trends in this region get much steeper which means the rate of increase of life expectancy goes up significantly in this period. This rise continues at a relatively consistent pace up till 2000.
+
+However, it is important to note that this is the general trend and as we can see there is a significant disparity between countries within their own continents throughout the timeline.The sudden uptick in life expectancy between the late 1800's and early 1900's for certain countries can be explained by early industrialization that they underwent during that period while other countries remained relatively low on life expectancy. This in turn lead to a very high health inequality across the globe.
+
+
+#### Peru vs Australia Life Expectancy over Time plot
+
+
+This disparity is explored over the years between two countries from the same continent, Australia and Fiji, from 1850 to 2000 in the graph below.
+
+```{r NorwayVSSriLanka}
+# Select relevant data
+Sub_Data <- filter(Tidy_Data, (country %in% c("Australia","Fiji")) 
+                   & (year %in% c(1850,1900,1950,2000)))
+# Grouped boxplot
+ggplot(Sub_Data, aes(x = factor(year), y = life_expectancy, fill = country)) +
+    geom_bar(colour = "black", position = "dodge", stat = "identity") +
+    labs(x = "Year", y = "Life Expectancy", 
+         title = "Juxtaposed Life Expectancy in Australia VS Peru") 
+```
+
+
+The bar graph above showcases the fact that disparity in life expectancy between Fiji and Australia two countries that in the early 1900's represented two different pictures are now in closer footing in terms of life expectancy meaning its no longer the case that good health is exclusively in the countries that got rich early while bad health persists in those countries that remained poor.
+
+To summarize, early industrialization within certain countries irrespective continent lead to a high disparity in life expectancy in the the late 1800's and early 1900's however over the next century the global health and medical knowledge have improved tremendously.
+
+
+### References
+
+1. Gapminder.org. 2020. Data. [online] Available at: <https://www.gapminder.org/data/> [Accessed 3 November 2020].
+2. Wickham, Hadley. 2016. Ggplot2: Elegant Graphics for Data Analysis. springer.
+3. Wickham, Hadley, and Garrett Grolemund. 2016. R for Data Science: Import, Tidy, Transform, Visualize, and Model Data. " O’Reilly Media, Inc.".

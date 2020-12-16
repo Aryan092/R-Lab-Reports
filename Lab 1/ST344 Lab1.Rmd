@@ -1,0 +1,106 @@
+---
+title: <center> <h1>Statistical Investigation into the relationship between Self-perceived attractiveness and Date likelihood</h1> </center>
+author: "<center>Author - Aryan</center>"
+date: "<center>Date - 15/10/2020</center>"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Introduction
+
+The question here links of the self-perception of two concepts, attractiveness and likelihood of someone they met being interested in dating. We will refer to the former in this piece as *“Self-perceived attractiveness”* and the latter as *“Date likelihood”*. Factors such as these have been linked to the important decision of choosing a partner and is of interest to researchers across fields like psychology and behavioural economics having sparked a number of research studies over the years. In the following piece, we will consider a study conducted by researchers from Columbia, Stanford and Harvard Universities. 
+
+You can have a read of the original paper at this [link](https://academic.oup.com/qje/article-abstract/121/2/673/1884033?redirectedFrom=fulltext). The dataset used from the study at Columbia Business school (Fisman et al. 2006) is available from [Andrew Gelman’s website](http://www.stat.columbia.edu/~gelman/arm/examples/speed.dating/). 
+
+### Background problem and Experimental design
+
+The researchers Fisman, Iyengar, Kamenica and Simonson were interested in the age old question of determining the factors influencing a person’s choice of marriage partners. To achieve this data a few options were considered but, the researchers opted to employ a speed dating experiment due to its highly active and simple format. This allowed the researchers to control several aspects of the setup such as number of dates per individual. There were obvious drawbacks, such as the short-term dating mindset of most participants. Despite the downside, studying the reasons for an initial romantic attraction were still of interest. The study was conducted amongst the graduate students at the University of Columbia in a series of 17 successful events running from 2002 to 2004. Certain variables like number participants and gender ratio were altered for events but the 1-to-1 rotating format of the speed date. *Note only heterosexual dates were considered in this study.*
+
+### Data description
+
+The data was collected using a series of surveys before, during, directly following and after the event. Several predictors  were identified from a prior attraction research and were recorded from the both from the participant and the date’s point of view. Some these included, similarity of racial backgrounds, personality matches and financial security. We are, however, interested in the attributes of *Self-perceived attractiveness* and *Date likelihood* that the raw data labels `attr3_1` and `prob` respectively. One of the data collection issues that was observed was the omission of information in the surveys. This is dealt with in the analysis conducted further in this piece.
+
+### Subsetting the data
+
+To load the data we can use the R command:
+
+```{r DataIntoR}
+SpeedRawData <- read.csv("SpeedDatingRawData.csv")
+```
+
+The raw data has `r nrow(SpeedRawData)` rows and `r ncol(SpeedRawData)` columns. However, as stated above, we are only interested in the two variables regarding the *self-perceived of attractiveness* and the *date likelihood*. 
+
+The following code constructs a data frame that encompasses the values of interest alone whilst removing all rows containing empty values for either variable:
+
+```{r ConstructDataFrame}
+ind <- !is.na(SpeedRawData$attr3_1) & !is.na(SpeedRawData$prob)
+SpeedData <- SpeedRawData[ind, c("attr3_1", "prob")]
+```
+
+First 5 elements of the newly constructed table:
+
+```{r TableChunk, echo = FALSE, results = 'asis'}
+library(knitr)
+kable(SpeedData[1:5, ], 
+     col.names = c("Self-Perceived Attractiveness", "Date Likelihood"), 
+     align = c('l', 'c', 'r'), caption = "Sample Raw Data of Variables of Interest")
+```
+
+We save the data frame `SpeedData` in a csv file as follows.
+```{r chunk5, eval = FALSE}
+write.table(SpeedData, file = "SpeedData.csv", sep = ",", row.names = FALSE)
+```
+
+
+### Reproducable Functions
+
+The use of R functions ensures reproducibility and avoids cluttering the workspace with variables. Our function will take only the raw data as input. It then produces a scatterplot with the best fit line superimposed on top of it to showcase the general trend and saves the selected data in a csv file, titled `SpeedData`.
+
+Here is the function that selects the data of interest.
+```{r SelectDataFctn}
+SelectData <- function(file)
+{
+  SpeedRawData <- read.csv(file)
+  ind <- !is.na(SpeedRawData$attr3_1) & !is.na(SpeedRawData$prob)
+  SpeedData <- SpeedRawData[ind, c("attr3_1", "prob")]
+  return(SpeedData)
+}
+```
+
+Below is the function that plots and then saves the data.
+
+```{r PlotAndSaveFctn, warning=FALSE}
+PlotAndSave <- function(inputfile = "input.csv", outputfile = "output.csv")
+{ 
+  data <- SelectData(file = inputfile) 
+  
+  library(ggplot2)
+
+  myggplot <- boxplot(prob~attr3_1,data=data, main = "Graphical Representation of Relationship", xlab = "Self-Perceived Attractiveness", ylab = "Date Likelihood", caption = "(based on data from (Fisman et al. 2006))")
+
+#  mynamestheme <- theme(plot.title = element_text(hjust = 0.5, family = "Helvetica", face = "bold", size = (15)), axis.title = element_text(family = "Helvetica", size = (10)), axis.text = element_text(family = "Courier", size = (10)))
+  
+  finalplot <- myggplot
+  
+  print(finalplot)
+  
+  write.table(data, file = outputfile, sep = ",", row.names = FALSE)
+}
+```
+
+### Resulting Plot
+
+Utilyzing the function above.
+```{r OutputChunk, fig.height=4, warning=FALSE}
+PlotAndSave(inputfile = "SpeedDatingRawData.csv", outputfile = "SpeedData.csv")
+```
+
+### Concluding Analysis
+
+#### A brief interpretation of the plot
+
+The plot through a general increase in median value suggests a **positive correlation** between *self-perceived attractiveness* and *date likelihood*. However, let weigh up the good with the biases that may be present here First and foremost, both these values are self-evaluated and hence could be over or under valued. However, even so this result should be expected since people who over-estimates themselves will tend to over-estimate both quantities and vice versa. It is perhaps worth restating that this was conducted within university student bodies, which restricts the ages and also makes us question the accuracy of their answers as students might tend not to take themselves or this exercise too seriously. The varied frequency of rating might also be influencing the graph. This could be controlled by studying or analyzing a fixed number of individuals from every ‘self-perceived attractiveness’ to see how ‘date likelihood’ varies and vice versa. It may also be of interest to plot the distribution of answers as some are more frequent than others, for example the rating of 7 for *self-perceived attractiveness*. On the other hand, this study does utilize a rather varied (differing backgrounds, races, subjects etc.) and engaging crowd. In conclusion, the data set shows a **positive causality** which implies higher the *self-perceived attractiveness* higher the *date likelihood* but a further study into the significance of this result is required.

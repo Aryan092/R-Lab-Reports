@@ -1,0 +1,116 @@
+---
+title:  <center> <h1>ST344 Lab3 - Exploratory Data Analysis</h1> </center>
+author: "<center>Author - 1826475</center>"
+date: "<center>Date - 28/10/2020</center>"
+output: html_document
+---
+***
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 8, fig.height = 5)
+```
+
+### Introduction
+
+This piece will focus on a little-known country on the eastern coast of Central America called **Belize**. To provide some context, the small country primarily hosts private enterprises such as agriculture but over recent years tourism has become an attractive sector. The massive Belize Barrier Reef and rich marine life are two standout natural features of Belize.
+
+However, just like other countries around the world, tourism is a sector that is devastatingly hit, stealing local local jobs and incomes. Therefore, in this piece we will be diving into the data to look at how work spaces in the country have been affected as well as looking at the confirmed cases to give us a general outlook of the outbreak in the country. *(Note: Workplaces was chosen as the variable for analysis for its relation to Tourism)*
+
+The data considered here is form the `tidycovid19` dataset which stores values for different variables concerning the  Covid-19 pandemic for countries around the globe. For a more detailed description of the package and the variables contained please click [here](https://joachim-gassen.github.io/tidycovid19/).
+
+### Reading in the raw data
+
+Firstly, let's read in th `tidycovid19` dataset:
+
+```{r ReadData}
+library(readxl)
+CovidData <- read.csv("tidycovid19.csv")
+```
+
+### Processing the data
+
+Next, we need to make sure R understands the `date` variable, which as the name suggests holds the date, correctly.
+
+```{r Date, message=FALSE}
+library(lubridate)
+CovidData$date = as.Date(parse_date_time(CovidData$date,orders=c("y","ym","ymd")))
+```
+
+The raw data has `r nrow(CovidData)` rows and `r ncol(CovidData)` columns but, we aren't always necessarily interested in the entire data. Hence, we tend to subset the data. We will select the data for the variables of interest which are:
+
+ * `date`: calendar date
+ * `confirmed`: Confirmed Covid-19 cases 
+ * `gcmr_workplaces`: The frequency that people visit workplaces expressed as a percentage*100 change relative to the baseline period Jan 3 - Feb 6, 2020
+
+The descriptions above are from this [link](https://joachim-gassen.github.io/tidycovid19/).
+
+The code below subsets as desired and creates a date range of Feb 15 - Sep 19 2020, as row values above and below this date range hold missing values for the variable `gcmr_workplaces`.
+
+```{r ExtractRows, message=FALSE}
+library(dplyr)
+Task1Data <- {CovidData %>% 
+    filter(country == "Belize" & (date > as.Date("2020-02-06")) & (date < as.Date("2020-09-19"))) %>%
+    select(date, confirmed, gcmr_workplaces) }
+```
+
+This also gives a common range to evaluate over both variables over time. Next, we change `confirmed` from cumulative to holding cases per day:
+
+```{r CasesPerDay}
+firstdiff <- function(x) {
+  shifted <- c(0,x[1:(length(x)-1)])
+  result = x-shifted
+  which_negative = which(result<0)
+  result[which_negative] = NA
+  return(result)
+}
+
+Task1Data <- Task1Data %>%
+  mutate(daily_confirmed = firstdiff(confirmed))
+```
+
+
+### Producing Plots
+
+#### Confirmed cases per day plot
+
+The plot below is for confirmed cases against time.
+
+```{r ConfirmedCasesGraph, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(zoo)
+ave_new_cases = rollmean(Task1Data$daily_confirmed, 7, na.pad=TRUE, align="right")
+plotconfirmed.date <- {Task1Data %>% ggplot(aes(x = date))} + labs(title = "Graphical Representation of Confirmed cases against Time", x = "Date", y = "Confirmed cases", caption = "(based on data by JHU CSSE)") +
+  geom_bar(aes(y = daily_confirmed), stat = "identity", fill = "lightblue") +
+  geom_line(aes(y = ave_new_cases), color ="red") +
+  theme_minimal()+
+  scale_x_date(date_breaks = "months", date_labels = "%b-%y")
+print(plotconfirmed.date)
+```
+
+The `tidycovid19` data used above is form the *JHU CSSE*. The plot above displays how the confirmed cases per day in the country changed in the Belize from Feb 15 - Sep 19 2020. First signs of Covid-19 appear in April and we notice that the confirmed cases are fairly up until august after which there is a sharp peak for about a month and then a trend downwards. The red line highlights the general trend line, using a rolling mean.
+
+### Workplace frequency plot
+
+Now, we are going to plot work-place visits against time and evaluate the effect of total cases on the frequency of workplace visits.
+
+```{r ResidentialGraph, message=FALSE, warning=FALSE}
+library(ggplot2)
+
+plotwork.date <- {Task1Data %>% ggplot(aes(x = date, 
+    y = gcmr_workplaces))} + geom_point() + labs(title = "Graphical Representation of Work-place visits against Time", x = "Date", y = "Activity in residences (% change from baseline)", caption = "(based on data by Google Community Mobility Reports)") +
+    scale_x_date(date_breaks = "months", date_labels = "%b-%y")
+
+print(plotwork.date)
+```
+
+The `tidycovid19` data used above is form the *Google Community Mobility Reports*. The data is collated using the **Location History** from mobile phones, which the report records a measurement of activity of the the frequency that people visit workplaces expressed as a percentage change for each day, relative to the baseline period Jan 3 - Feb 6, 2020. The plot above displays how the activity in work places changed in the Belize from Feb 15 - Sep 19 2020.
+
+This graph displays a dip in work place visit frequency in April which coincides with the first few cases in the plot above which seems to suggest that there is a cause and affect there. Moving further the work place visits increase from then on till July without showcasing any massive jumps in Covid-19 cases, although a few more cases appear in that time. From July to August we see a fairly stable relatively high work place frequency which coincides with a large jump in cases. This could have something to do with the 14-day Covid-19 period for symptoms to take effect as well as testing delays. Beyond, August a fall in work place frequency is quickly followed by a drop in confirmed cases.
+
+In conclusion, a stron relation between work place frequency and the number of Covid-19 cases in Belize is suggested by comparing and contrasting these 2 graphs.
+
+
+
+### References
+
+
